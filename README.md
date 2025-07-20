@@ -81,6 +81,39 @@ src/main/java/com/example/order/
 - **I** - Interface Segregation: Interfaces específicas
 - **D** - Dependency Inversion: Inversão de dependências
 
+### 💡 **Exemplos de Implementação**
+
+#### Domain Layer - Lógica de Negócio
+```java
+@Entity
+public class PedidoEntity {
+    public void calcularTotal() {
+        this.total = this.produtos.stream()
+                .map(ProdutoEntity::getPreco)
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+    }
+    
+    public void marcarComoProcessado() {
+        this.status = PedidoStatus.PROCESSADO;
+    }
+}
+```
+
+#### Application Layer - Casos de Uso
+```java
+@Service
+public class PedidoService {
+    @Transactional
+    public PedidoEntity processarPedido(PedidoDTO dto) {
+        PedidoEntity pedido = pedidoMapper.toEntity(dto);
+        pedido.marcarComoProcessado();
+        PedidoEntity salvo = repository.save(pedido);
+        kafkaProducer.enviarPedidoProcessado(salvo);
+        return salvo;
+    }
+}
+```
+
 ## 📋 API Endpoints
 
 ### **POST** `/api/pedidos` - Criar Pedido
@@ -118,6 +151,19 @@ src/main/java/com/example/order/
 
 # Com relatório de cobertura
 ./mvnw jacoco:report
+```
+
+### 🔬 Tipos de Testes
+```java
+// Testes Unitários
+@ExtendWith(MockitoExtension.class)
+class PedidoServiceTest { ... }
+
+// Testes de Integração
+@SpringBootTest
+@Testcontainers
+@EmbeddedKafka
+class OrderServiceIntegrationTest { ... }
 ```
 
 ## 🐳 Containerização
@@ -167,7 +213,7 @@ services:
 | **Mapping** | MapStruct | 1.5.5 |
 | **Documentation** | Swagger/OpenAPI | 2.2.0 |
 
-## 📊 Monitoramento
+## 📊 Monitoramento e Observabilidade
 
 ### 🔍 Health Checks
 - **Database**: Verificação de conectividade PostgreSQL
@@ -179,6 +225,12 @@ services:
 - **Spring Actuator**: Endpoints de monitoramento
 - **Logging**: Logs estruturados com interceptors
 
+### 📝 Exemplo de Log
+```
+2024-01-01 10:00:00 - [REQUEST] POST /api/pedidos - User-Agent: curl/7.68.0
+2024-01-01 10:00:01 - [RESPONSE] POST /api/pedidos - Status: 201
+```
+
 ## 🚀 Escalabilidade
 
 ### 📈 Características
@@ -187,9 +239,35 @@ services:
 - **Connection Pooling**: Pool de conexões otimizado
 - **Kafka Partitioning**: Suporte a partições
 
-## 📚 Documentação
+### 🔄 Fluxo de Processamento
+1. **Recebimento**: REST API ou Kafka (`pedidos.recebidos`)
+2. **Validação**: Bean Validation
+3. **Processamento**: Cálculo de total
+4. **Persistência**: PostgreSQL
+5. **Publicação**: Kafka (`pedidos.processados`)
 
-- **[PRESENTATION.md](PRESENTATION.md)**: Apresentação detalhada do projeto
+## 🎯 Benefícios da Implementação
+
+### ✅ **Para Desenvolvedores**
+- Código limpo e manutenível
+- Testes automatizados
+- Documentação completa
+- Ambiente isolado com Docker
+
+### ✅ **Para Operações**
+- Monitoramento completo
+- Health checks automáticos
+- Logs estruturados
+- Escalabilidade horizontal
+
+### ✅ **Para Negócio**
+- Alta disponibilidade
+- Processamento assíncrono
+- Rastreabilidade completa
+- Integração flexível
+
+## 📚 Documentação Adicional
+
 - **[QUICKSTART.md](QUICKSTART.md)**: Guia de início rápido
 - **[examples/test-api.http](examples/test-api.http)**: Exemplos de API
 - **Swagger UI**: http://localhost:8080/swagger-ui.html
