@@ -1,21 +1,25 @@
-### Teste da API Order Service
+### Order Service API Tests
+### Use este arquivo com IntelliJ IDEA ou VS Code REST Client
 
 ### 1. Health Check
-GET http://localhost:8080/api/pedidos/health
+GET http://localhost:8080/actuator/health
+Content-Type: application/json
 
-### 2. Criar Pedido
+###
+
+### 2. Criar Pedido com Produtos (TESTE PRINCIPAL)
 POST http://localhost:8080/api/pedidos
 Content-Type: application/json
 
 {
-  "externalId": "EXT-001",
+  "externalId": "DEMO-001",
   "produtos": [
     {
       "nome": "Notebook Dell Inspiron",
       "preco": 2999.99
     },
     {
-      "nome": "Mouse Wireless",
+      "nome": "Mouse Wireless Logitech",
       "preco": 89.90
     },
     {
@@ -25,59 +29,244 @@ Content-Type: application/json
   ]
 }
 
-### 3. Buscar Pedido por ID
-GET http://localhost:8080/api/pedidos/1
+###
 
-### 4. Buscar Pedido por External ID
-GET http://localhost:8080/api/pedidos/external/EXT-001
-
-### 5. Teste com dados inválidos (deve retornar erro)
+### 3. Criar Pedido Simples (apenas 1 produto)
 POST http://localhost:8080/api/pedidos
 Content-Type: application/json
 
 {
-  "externalId": "",
-  "produtos": []
-}
-
-### 6. Teste com preço negativo (deve retornar erro)
-POST http://localhost:8080/api/pedidos
-Content-Type: application/json
-
-{
-  "externalId": "EXT-002",
+  "externalId": "DEMO-002",
   "produtos": [
     {
-      "nome": "Produto com preço negativo",
-      "preco": -10.00
+      "nome": "iPhone 15 Pro",
+      "preco": 8999.99
     }
   ]
 }
 
-### 7. Teste com nome vazio (deve retornar erro)
+###
+
+### 4. Criar Pedido com Muitos Produtos
 POST http://localhost:8080/api/pedidos
 Content-Type: application/json
 
 {
-  "externalId": "EXT-003",
+  "externalId": "DEMO-003",
   "produtos": [
     {
-      "nome": "",
-      "preco": 10.00
+      "nome": "MacBook Pro M3",
+      "preco": 15999.99
+    },
+    {
+      "nome": "AirPods Pro",
+      "preco": 249.90
+    },
+    {
+      "nome": "Capa MacBook",
+      "preco": 199.90
+    },
+    {
+      "nome": "Hub USB-C",
+      "preco": 89.90
+    },
+    {
+      "nome": "Mouse Magic",
+      "preco": 599.90
     }
   ]
 }
 
-### 8. Teste de pedido duplicado (deve retornar erro)
+###
+
+### 5. Teste de Validação - External ID Duplicado
 POST http://localhost:8080/api/pedidos
 Content-Type: application/json
 
 {
-  "externalId": "EXT-001",
+  "externalId": "DEMO-001",
   "produtos": [
     {
       "nome": "Produto Duplicado",
-      "preco": 50.00
+      "preco": 100.00
     }
   ]
-} 
+}
+
+###
+
+### 6. Teste de Validação - Sem Produtos
+POST http://localhost:8080/api/pedidos
+Content-Type: application/json
+
+{
+  "externalId": "DEMO-EMPTY",
+  "produtos": []
+}
+
+###
+
+### 7. Buscar Pedido por ID
+GET http://localhost:8080/api/pedidos/1
+Content-Type: application/json
+
+###
+
+### 8. Buscar Pedido por External ID
+GET http://localhost:8080/api/pedidos/external/DEMO-001
+Content-Type: application/json
+
+###
+
+### 9. Teste de Pedido com Preços Altos
+POST http://localhost:8080/api/pedidos
+Content-Type: application/json
+
+{
+  "externalId": "DEMO-HIGH-VALUE",
+  "produtos": [
+    {
+      "nome": "Servidor Dell PowerEdge",
+      "preco": 25000.00
+    },
+    {
+      "nome": "Switch Cisco Catalyst",
+      "preco": 15000.00
+    },
+    {
+      "nome": "Licença Windows Server",
+      "preco": 5000.00
+    }
+  ]
+}
+
+###
+
+### 10. Teste de Pedido com Produtos de Baixo Valor
+POST http://localhost:8080/api/pedidos
+Content-Type: application/json
+
+{
+  "externalId": "DEMO-LOW-VALUE",
+  "produtos": [
+    {
+      "nome": "Cabo USB",
+      "preco": 9.90
+    },
+    {
+      "nome": "Adaptador HDMI",
+      "preco": 15.50
+    },
+    {
+      "nome": "Protetor de Tela",
+      "preco": 12.99
+    }
+  ]
+}
+
+###
+
+### 11. Verificar se Produtos foram Inseridos (via banco)
+### Execute no terminal: docker exec order-postgres psql -U orderuser -d orderdb -c "SELECT p.id, p.external_id, p.total, pr.nome, pr.preco FROM pedidos p JOIN products pr ON p.id = pr.pedido_id ORDER BY p.id, pr.id;"
+
+### 12. Verificar Contagem de Pedidos e Produtos
+### Execute no terminal: docker exec order-postgres psql -U orderuser -d orderdb -c "SELECT 'Pedidos' as tipo, COUNT(*) as total FROM pedidos UNION ALL SELECT 'Produtos' as tipo, COUNT(*) as total FROM products;"
+
+### 13. Teste de Performance - Múltiplos Pedidos
+POST http://localhost:8080/api/pedidos
+Content-Type: application/json
+
+{
+  "externalId": "PERF-001",
+  "produtos": [
+    {
+      "nome": "Produto Performance 1",
+      "preco": 100.00
+    },
+    {
+      "nome": "Produto Performance 2",
+      "preco": 200.00
+    }
+  ]
+}
+
+###
+
+POST http://localhost:8080/api/pedidos
+Content-Type: application/json
+
+{
+  "externalId": "PERF-002",
+  "produtos": [
+    {
+      "nome": "Produto Performance 3",
+      "preco": 300.00
+    }
+  ]
+}
+
+###
+
+POST http://localhost:8080/api/pedidos
+Content-Type: application/json
+
+{
+  "externalId": "PERF-003",
+  "produtos": [
+    {
+      "nome": "Produto Performance 4",
+      "preco": 400.00
+    },
+    {
+      "nome": "Produto Performance 5",
+      "preco": 500.00
+    },
+    {
+      "nome": "Produto Performance 6",
+      "preco": 600.00
+    }
+  ]
+}
+
+###
+
+### 14. Verificar Logs da Aplicação
+### Execute no terminal: docker logs order-service --tail 20
+
+### 15. Health Check Detalhado
+GET http://localhost:8080/actuator/health/db
+Content-Type: application/json
+
+###
+
+GET http://localhost:8080/actuator/health/kafka
+Content-Type: application/json
+
+###
+
+### 16. Teste Final - Validação Completa
+POST http://localhost:8080/api/pedidos
+Content-Type: application/json
+
+{
+  "externalId": "FINAL-TEST",
+  "produtos": [
+    {
+      "nome": "🎉 Pedido Final Teste",
+      "preco": 999.99
+    },
+    {
+      "nome": "✅ Produto Inserido com Sucesso",
+      "preco": 888.88
+    }
+  ]
+}
+
+###
+
+### RESULTADO ESPERADO:
+### - Status: 201 Created
+### - Resposta deve incluir: pedidoId, externalId, total, produtos[]
+### - Produtos devem ter IDs únicos
+### - Total deve ser a soma dos preços dos produtos
+### - Status deve ser "PROCESSADO" 

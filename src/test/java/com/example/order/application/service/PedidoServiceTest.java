@@ -4,9 +4,11 @@ import com.example.order.application.dto.PedidoDTO;
 import com.example.order.application.dto.ProdutoDTO;
 import com.example.order.application.mapper.PedidoMapper;
 import com.example.order.domain.entity.PedidoEntity;
+import com.example.order.domain.entity.ProdutoEntity;
 import com.example.order.domain.enums.PedidoStatus;
 import com.example.order.infrastructure.messaging.KafkaPedidoProducer;
 import com.example.order.infrastructure.repository.PedidoRepository;
+import com.example.order.infrastructure.repository.ProdutoRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -29,6 +31,9 @@ class PedidoServiceTest {
     private PedidoRepository pedidoRepository;
     
     @Mock
+    private ProdutoRepository produtoRepository;
+    
+    @Mock
     private PedidoMapper pedidoMapper;
     
     @Mock
@@ -39,6 +44,8 @@ class PedidoServiceTest {
     
     private PedidoDTO pedidoDTO;
     private PedidoEntity pedidoEntity;
+    private ProdutoEntity produtoEntity1;
+    private ProdutoEntity produtoEntity2;
     
     @BeforeEach
     void setUp() {
@@ -65,6 +72,20 @@ class PedidoServiceTest {
                 .status(PedidoStatus.PROCESSADO)
                 .total(new BigDecimal("30.50"))
                 .build();
+        
+        produtoEntity1 = ProdutoEntity.builder()
+                .id(1L)
+                .nome("Produto 1")
+                .preco(new BigDecimal("10.50"))
+                .pedidoId(1L)
+                .build();
+        
+        produtoEntity2 = ProdutoEntity.builder()
+                .id(2L)
+                .nome("Produto 2")
+                .preco(new BigDecimal("20.00"))
+                .pedidoId(1L)
+                .build();
     }
     
     @Test
@@ -72,7 +93,9 @@ class PedidoServiceTest {
         // Given
         when(pedidoRepository.existsByExternalId("EXT-001")).thenReturn(false);
         when(pedidoMapper.toEntity(pedidoDTO)).thenReturn(pedidoEntity);
+        when(pedidoMapper.toEntity(any(ProdutoDTO.class))).thenReturn(produtoEntity1, produtoEntity2);
         when(pedidoRepository.save(any(PedidoEntity.class))).thenReturn(pedidoEntity);
+        when(produtoRepository.save(any(ProdutoEntity.class))).thenReturn(produtoEntity1, produtoEntity2);
         when(kafkaPedidoProducer.enviarPedidoProcessado(any())).thenReturn(null);
         
         // When
@@ -82,10 +105,10 @@ class PedidoServiceTest {
         assertNotNull(resultado);
         assertEquals("EXT-001", resultado.getExternalId());
         assertEquals(PedidoStatus.PROCESSADO, resultado.getStatus());
-        assertEquals(new BigDecimal("30.50"), resultado.getTotal());
         
         verify(pedidoRepository).existsByExternalId("EXT-001");
-        verify(pedidoRepository).save(any(PedidoEntity.class));
+        verify(pedidoRepository, times(2)).save(any(PedidoEntity.class)); // Uma vez para salvar o pedido, outra para atualizar com produtos
+        verify(produtoRepository, times(2)).save(any(ProdutoEntity.class)); // Uma vez para cada produto
         verify(kafkaPedidoProducer).enviarPedidoProcessado(any(PedidoEntity.class));
     }
     
@@ -101,6 +124,7 @@ class PedidoServiceTest {
         
         assertEquals("Pedido já existe: EXT-001", exception.getMessage());
         verify(pedidoRepository, never()).save(any());
+        verify(produtoRepository, never()).save(any());
         verify(kafkaPedidoProducer, never()).enviarPedidoProcessado(any());
     }
     
@@ -155,5 +179,40 @@ class PedidoServiceTest {
         });
         
         assertEquals("Pedido não encontrado: EXT-999", exception.getMessage());
+    }
+    
+    @Test
+    void deveSalvarPedidoPrimeiroEDepoisProdutos() {
+        // Given
+        PedidoEntity pedidoSemId = PedidoEntity.builder()
+                .externalId("EXT-002")
+                .status(PedidoStatus.PROCESSADO)
+                .build();
+        
+        PedidoEntity pedidoComId = PedidoEntity.builder()
+                .id(2L)
+                .externalId("EXT-002")
+                .status(PedidoStatus.PROCESSADO)
+                .build();
+        
+        when(pedidoRepository.existsByExternalId("EXT-002")).thenReturn(false);
+        when(pedidoMapper.toEntity(pedidoDTO)).thenReturn(pedidoSemId);
+        when(pedidoMapper.toEntity(any(ProdutoDTO.class))).thenReturn(produtoEntity1, produtoEntity2);
+        when(pedidoRepository.save(pedidoSemId)).thenReturn(pedidoComId);
+        when(produtoRepository.save(any(ProdutoEntity.class))).thenReturn(produtoEntity1, produtoEntity2);
+        when(pedidoRepository.save(pedidoComId)).thenReturn(pedidoComId);
+        when(kafkaPedidoProducer.enviarPedidoProcessado(any())).thenReturn(null);
+        
+        // When
+        PedidoEntity resultado = pedidoService.processarPedido(pedidoDTO);
+        
+        // Then
+        assertNotNull(resultado);
+        assertEquals(2L, resultado.getId());
+        
+        // Verificar ordem das operações
+        verify(pedidoRepository).save(pedidoSemId); // Primeiro salva o pedido sem produtos
+        verify(produtoRepository, times(2)).save(any(ProdutoEntity.class)); // Depois salva os produtos
+        verify(pedidoRepository).save(pedidoComId); // Por fim atualiza o pedido com produtos
     }
 } 

@@ -34,10 +34,10 @@ Produto Externo A → Order Service → PostgreSQL → Kafka → Produto Externo
 git clone https://github.com/seuusuario/order-service.git
 cd order-service
 
-# 2. Execute com Docker
-docker-compose up --build
+# 2. Execute com Docker (IMPORTANTE: Use --build para garantir as últimas mudanças)
+docker-compose up --build -d
 
-# 3. Teste a API
+# 3. Aguarde a inicialização (15-20 segundos) e teste a API
 curl -X POST http://localhost:8080/api/pedidos \
   -H "Content-Type: application/json" \
   -d '{
@@ -54,6 +54,34 @@ curl -X POST http://localhost:8080/api/pedidos \
 - **Swagger UI**: http://localhost:8080/swagger-ui.html
 - **Kafka UI**: http://localhost:8081
 - **Health Check**: http://localhost:8080/actuator/health
+
+### ⚠️ **IMPORTANTE: Problema Resolvido**
+
+Este projeto resolveu um problema crítico de **inserção de produtos com foreign key null**. A solução implementada garante que:
+
+1. **Pedido é salvo primeiro** - Obtém ID automaticamente
+2. **Produtos são inseridos depois** - Com o ID do pedido já definido
+3. **Transação garantida** - Tudo funciona dentro de uma transação
+4. **Resposta completa** - API retorna pedido + produtos inseridos
+
+#### 🔧 **Solução Técnica Implementada**
+```java
+@Transactional
+public PedidoEntity processarPedido(PedidoDTO pedidoDTO) {
+    // 1. Salvar apenas o pedido primeiro
+    PedidoEntity pedido = pedidoMapper.toEntity(pedidoDTO);
+    PedidoEntity pedidoSalvo = pedidoRepository.save(pedido);
+    
+    // 2. Agora inserir produtos com o ID do pedido
+    for (ProdutoDTO produtoDTO : pedidoDTO.getProdutos()) {
+        ProdutoEntity produto = pedidoMapper.toEntity(produtoDTO);
+        produto.setPedidoId(pedidoSalvo.getId()); // ✅ ID já disponível
+        produtoRepository.save(produto);
+    }
+    
+    return pedidoSalvo;
+}
+```
 
 ## 🏗️ Arquitetura
 
@@ -87,10 +115,8 @@ src/main/java/com/example/order/
 ```java
 @Entity
 public class PedidoEntity {
-    public void calcularTotal() {
-        this.total = this.produtos.stream()
-                .map(ProdutoEntity::getPreco)
-                .reduce(BigDecimal.ZERO, BigDecimal::add);
+    public void calcularTotal(BigDecimal total) {
+        this.total = total;
     }
     
     public void marcarComoProcessado() {
@@ -105,10 +131,18 @@ public class PedidoEntity {
 public class PedidoService {
     @Transactional
     public PedidoEntity processarPedido(PedidoDTO dto) {
+        // Salvar pedido primeiro
         PedidoEntity pedido = pedidoMapper.toEntity(dto);
         pedido.marcarComoProcessado();
         PedidoEntity salvo = repository.save(pedido);
-        kafkaProducer.enviarPedidoProcessado(salvo);
+        
+        // Depois salvar produtos
+        for (ProdutoDTO produtoDTO : dto.getProdutos()) {
+            ProdutoEntity produto = pedidoMapper.toEntity(produtoDTO);
+            produto.setPedidoId(salvo.getId());
+            produtoRepository.save(produto);
+        }
+        
         return salvo;
     }
 }
@@ -127,6 +161,31 @@ public class PedidoService {
     },
     {
       "nome": "Produto 2", 
+      "preco": 20.00
+    }
+  ]
+}
+```
+
+**Resposta de Sucesso:**
+```json
+{
+  "success": true,
+  "message": "Pedido criado com sucesso",
+  "pedidoId": 1,
+  "externalId": "EXT-001",
+  "status": "PROCESSADO",
+  "total": 30.50,
+  "createdAt": "2025-07-20T20:07:30.28944",
+  "produtos": [
+    {
+      "id": 1,
+      "nome": "Produto 1",
+      "preco": 10.50
+    },
+    {
+      "id": 2,
+      "nome": "Produto 2",
       "preco": 20.00
     }
   ]
@@ -200,6 +259,28 @@ services:
       - "8080:8080"
 ```
 
+### 🚀 **Comandos Docker Importantes**
+
+```bash
+# Iniciar com rebuild completo (RECOMENDADO)
+docker-compose up --build -d
+
+# Parar todos os serviços
+docker-compose down
+
+# Ver logs da aplicação
+docker logs order-service -f
+
+# Verificar status dos containers
+docker ps
+
+# Acessar banco de dados
+docker exec -it order-postgres psql -U orderuser -d orderdb
+
+# Verificar produtos inseridos
+docker exec order-postgres psql -U orderuser -d orderdb -c "SELECT * FROM products;"
+```
+
 ## 🛠️ Stack Tecnológica
 
 | Categoria | Tecnologia | Versão |
@@ -228,6 +309,12 @@ services:
 ### 📝 Exemplo de Log
 ```
 2024-01-01 10:00:00 - [REQUEST] POST /api/pedidos - User-Agent: curl/7.68.0
+2024-01-01 10:00:01 - === INÍCIO DO PROCESSAMENTO ===
+2024-01-01 10:00:01 - === SALVANDO APENAS O PEDIDO ===
+2024-01-01 10:00:01 - Pedido salvo com sucesso: 1
+2024-01-01 10:00:01 - === PROCESSANDO PRODUTOS ===
+2024-01-01 10:00:01 - Produto 1 salvo com sucesso, ID: 1
+2024-01-01 10:00:01 - === PROCESSAMENTO CONCLUÍDO ===
 2024-01-01 10:00:01 - [RESPONSE] POST /api/pedidos - Status: 201
 ```
 
@@ -243,7 +330,7 @@ services:
 1. **Recebimento**: REST API ou Kafka (`pedidos.recebidos`)
 2. **Validação**: Bean Validation
 3. **Processamento**: Cálculo de total
-4. **Persistência**: PostgreSQL
+4. **Persistência**: PostgreSQL (pedido primeiro, produtos depois)
 5. **Publicação**: Kafka (`pedidos.processados`)
 
 ## 🎯 Benefícios da Implementação
@@ -253,18 +340,67 @@ services:
 - Testes automatizados
 - Documentação completa
 - Ambiente isolado com Docker
+- **Problema de foreign key resolvido**
 
 ### ✅ **Para Operações**
 - Monitoramento completo
 - Health checks automáticos
 - Logs estruturados
 - Escalabilidade horizontal
+- **Transações garantidas**
 
 ### ✅ **Para Negócio**
 - Alta disponibilidade
 - Processamento assíncrono
 - Rastreabilidade completa
 - Integração flexível
+- **Dados consistentes**
+
+## 🔧 **Troubleshooting**
+
+### ❌ **Problemas Comuns e Soluções**
+
+#### 1. **Erro 500 - "null value in column pedido_id"**
+**Causa**: Produtos sendo inseridos antes do pedido ter ID
+**Solução**: ✅ **IMPLEMENTADO** - Pedido salvo primeiro, produtos depois
+
+#### 2. **Container não inicia**
+```bash
+# Verificar logs
+docker logs order-service
+
+# Rebuild completo
+docker-compose down
+docker-compose up --build -d
+```
+
+#### 3. **API retorna 404**
+```bash
+# Aguardar inicialização completa (15-20 segundos)
+# Verificar se container está healthy
+docker ps
+```
+
+#### 4. **Produtos não aparecem na resposta**
+```bash
+# Verificar se foram inseridos no banco
+docker exec order-postgres psql -U orderuser -d orderdb -c "SELECT * FROM products;"
+```
+
+### 🧪 **Testes de Validação**
+
+```bash
+# Teste 1: Criar pedido com produtos
+curl -X POST http://localhost:8080/api/pedidos \
+  -H "Content-Type: application/json" \
+  -d '{"externalId": "TEST-001", "produtos": [{"nome": "Teste", "preco": 100.00}]}'
+
+# Teste 2: Verificar se produtos foram inseridos
+docker exec order-postgres psql -U orderuser -d orderdb -c "SELECT p.id, p.external_id, pr.nome, pr.preco FROM pedidos p JOIN products pr ON p.id = pr.pedido_id;"
+
+# Teste 3: Health check
+curl http://localhost:8080/actuator/health
+```
 
 ## 📚 Documentação Adicional
 
@@ -287,6 +423,7 @@ services:
 - [ ] Testes de integração passando
 - [ ] Documentação atualizada
 - [ ] Build passando no CI/CD
+- [ ] **Problema de foreign key testado**
 
 ## 📞 Suporte
 

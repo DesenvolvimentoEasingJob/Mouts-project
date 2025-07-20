@@ -3,14 +3,16 @@ package com.example.order.domain.entity;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
-import lombok.Data;
+import lombok.Getter;
 import lombok.NoArgsConstructor;
+import lombok.Setter;
 
 import java.math.BigDecimal;
 
 @Entity
 @Table(name = "products")
-@Data
+@Getter
+@Setter
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
@@ -26,7 +28,6 @@ public class ProdutoEntity {
     @Column(name = "preco", precision = 10, scale = 2, nullable = false)
     private BigDecimal preco;
     
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "pedido_id", nullable = false)
-    private PedidoEntity pedido;
+    @Column(name = "pedido_id", nullable = false)
+    private Long pedidoId;
 } 

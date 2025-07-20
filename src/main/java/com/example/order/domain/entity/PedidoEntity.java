@@ -4,8 +4,9 @@ import com.example.order.domain.enums.PedidoStatus;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
-import lombok.Data;
+import lombok.Getter;
 import lombok.NoArgsConstructor;
+import lombok.Setter;
 import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.UpdateTimestamp;
 
@@ -16,7 +17,8 @@ import java.util.List;
 
 @Entity
 @Table(name = "orders")
-@Data
+@Getter
+@Setter
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
@@ -36,10 +38,6 @@ public class PedidoEntity {
     @Column(name = "status", nullable = false)
     private PedidoStatus status;
     
-    @OneToMany(mappedBy = "pedido", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
-    @Builder.Default
-    private List<ProdutoEntity> produtos = new ArrayList<>();
-    
     @CreationTimestamp
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;
@@ -49,16 +47,8 @@ public class PedidoEntity {
     private LocalDateTime updatedAt;
     
     // Métodos de domínio
-    public void adicionarProduto(ProdutoEntity produto) {
-        produto.setPedido(this);
-        this.produtos.add(produto);
-        this.calcularTotal();
-    }
-    
-    public void calcularTotal() {
-        this.total = this.produtos.stream()
-                .map(ProdutoEntity::getPreco)
-                .reduce(BigDecimal.ZERO, BigDecimal::add);
+    public void calcularTotal(BigDecimal total) {
+        this.total = total;
     }
     
     public void marcarComoProcessado() {

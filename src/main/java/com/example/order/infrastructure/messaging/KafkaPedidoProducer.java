@@ -28,15 +28,17 @@ public class KafkaPedidoProducer {
             String json = objectMapper.writeValueAsString(pedido);
             log.info("Enviando pedido processado para Kafka: {}", pedido.getExternalId());
             
-            return kafkaTemplate.send(TOPIC_PEDIDOS_PROCESSADOS, pedido.getExternalId(), json)
-                    .completable()
-                    .whenComplete((result, throwable) -> {
-                        if (throwable != null) {
-                            log.error("Erro ao enviar pedido para Kafka: {}", throwable.getMessage());
-                        } else {
-                            log.info("Pedido enviado com sucesso para Kafka: {}", pedido.getExternalId());
-                        }
-                    });
+            CompletableFuture<SendResult<String, String>> future = kafkaTemplate.send(TOPIC_PEDIDOS_PROCESSADOS, pedido.getExternalId(), json);
+            
+            future.whenComplete((result, throwable) -> {
+                if (throwable != null) {
+                    log.error("Erro ao enviar pedido para Kafka: {}", throwable.getMessage());
+                } else {
+                    log.info("Pedido enviado com sucesso para Kafka: {}", pedido.getExternalId());
+                }
+            });
+            
+            return future;
         } catch (JsonProcessingException e) {
             log.error("Erro ao serializar pedido: {}", e.getMessage());
             throw new RuntimeException("Erro ao serializar pedido", e);

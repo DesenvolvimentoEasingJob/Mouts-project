@@ -4,6 +4,20 @@ spring:
     username: orderuser
     password: orderpass
   
+  jpa:
+    hibernate:
+      ddl-auto: update
+    show-sql: false
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+        format_sql: true
+        hbm2ddl:
+          auto: update
+        validation:
+          mode: none
+    open-in-view: false
+  
   kafka:
     bootstrap-servers: kafka:29092
 

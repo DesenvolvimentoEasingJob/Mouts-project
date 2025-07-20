@@ -16,20 +16,14 @@ public interface PedidoMapper {
     
     @Mapping(target = "id", ignore = true)
     @Mapping(target = "total", ignore = true)
-    @Mapping(target = "status", source = "status", qualifiedByName = "defaultStatus")
+    @Mapping(target = "status", constant = "RECEBIDO")
     @Mapping(target = "createdAt", ignore = true)
     @Mapping(target = "updatedAt", ignore = true)
-    @Mapping(target = "produtos", source = "produtos")
     PedidoEntity toEntity(PedidoDTO dto);
     
     @Mapping(target = "id", ignore = true)
-    @Mapping(target = "pedido", ignore = true)
+    @Mapping(target = "pedidoId", ignore = true)
     ProdutoEntity toEntity(ProdutoDTO dto);
     
     List<ProdutoEntity> toEntityList(List<ProdutoDTO> dtos);
-    
-    @Named("defaultStatus")
-    default PedidoStatus defaultStatus(PedidoStatus status) {
-        return PedidoStatus.RECEBIDO;
-    }
 } 
