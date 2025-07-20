@@ -1,0 +1,83 @@
+### Teste da API Order Service
+
+### 1. Health Check
+GET http://localhost:8080/api/pedidos/health
+
+### 2. Criar Pedido
+POST http://localhost:8080/api/pedidos
+Content-Type: application/json
+
+{
+  "externalId": "EXT-001",
+  "produtos": [
+    {
+      "nome": "Notebook Dell Inspiron",
+      "preco": 2999.99
+    },
+    {
+      "nome": "Mouse Wireless",
+      "preco": 89.90
+    },
+    {
+      "nome": "Teclado Mecânico",
+      "preco": 299.00
+    }
+  ]
+}
+
+### 3. Buscar Pedido por ID
+GET http://localhost:8080/api/pedidos/1
+
+### 4. Buscar Pedido por External ID
+GET http://localhost:8080/api/pedidos/external/EXT-001
+
+### 5. Teste com dados inválidos (deve retornar erro)
+POST http://localhost:8080/api/pedidos
+Content-Type: application/json
+
+{
+  "externalId": "",
+  "produtos": []
+}
+
+### 6. Teste com preço negativo (deve retornar erro)
+POST http://localhost:8080/api/pedidos
+Content-Type: application/json
+
+{
+  "externalId": "EXT-002",
+  "produtos": [
+    {
+      "nome": "Produto com preço negativo",
+      "preco": -10.00
+    }
+  ]
+}
+
+### 7. Teste com nome vazio (deve retornar erro)
+POST http://localhost:8080/api/pedidos
+Content-Type: application/json
+
+{
+  "externalId": "EXT-003",
+  "produtos": [
+    {
+      "nome": "",
+      "preco": 10.00
+    }
+  ]
+}
+
+### 8. Teste de pedido duplicado (deve retornar erro)
+POST http://localhost:8080/api/pedidos
+Content-Type: application/json
+
+{
+  "externalId": "EXT-001",
+  "produtos": [
+    {
+      "nome": "Produto Duplicado",
+      "preco": 50.00
+    }
+  ]
+} 
