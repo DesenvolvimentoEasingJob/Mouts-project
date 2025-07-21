@@ -31,7 +31,7 @@ Produto Externo A → Order Service → PostgreSQL → Kafka → Produto Externo
 
 ```bash
 # 1. Clone o repositório
-git clone https://github.com/seuusuario/order-service.git
+git clone https://github.com/DesenvolvimentoEasingJob/order-service.git
 cd order-service
 
 # 2. Execute com Docker (IMPORTANTE: Use --build para garantir as últimas mudanças)
@@ -425,12 +425,6 @@ curl http://localhost:8080/actuator/health
 - [ ] Build passando no CI/CD
 - [ ] **Problema de foreign key testado**
 
-## 📞 Suporte
-
-- **Issues**: [GitHub Issues](https://github.com/seuusuario/order-service/issues)
-- **Documentação**: [Wiki](https://github.com/seuusuario/order-service/wiki)
-- **Email**: suporte@exemplo.com
-
 ---
 
 <div align="center">
@@ -439,8 +433,8 @@ curl http://localhost:8080/actuator/health
 
 *Desenvolvido com ❤️ seguindo as melhores práticas de desenvolvimento*
 
-[![GitHub stars](https://img.shields.io/github/stars/seuusuario/order-service?style=social)](https://github.com/seuusuario/order-service)
-[![GitHub forks](https://img.shields.io/github/forks/seuusuario/order-service?style=social)](https://github.com/seuusuario/order-service)
-[![GitHub issues](https://img.shields.io/github/issues/seuusuario/order-service)](https://github.com/seuusuario/order-service/issues)
+[![GitHub stars](https://img.shields.io/github/stars/DesenvolvimentoEasingJob/order-service?style=social)](https://github.com/DesenvolvimentoEasingJob/order-service)
+[![GitHub forks](https://img.shields.io/github/forks/DesenvolvimentoEasingJob/order-service?style=social)](https://github.com/DesenvolvimentoEasingJob/order-service)
+[![GitHub issues](https://img.shields.io/github/issues/DesenvolvimentoEasingJob/order-service)](https://github.com/DesenvolvimentoEasingJob/order-service/issues)
 
 </div> 
